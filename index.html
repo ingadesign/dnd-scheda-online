@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Epsilon System — Scheda D&amp;D 5e</title>
+<script src="theme-preload.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-title">EPSILON SYSTEM <small>Scheda D&amp;D 5e digitale</small></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-view="sheet"><span class="tab-ico">◈</span>Scheda</button>
+    <button class="tab-btn" data-view="consumables"><span class="tab-ico">⚗</span>Consumabili <span class="tab-count" id="consCount"></span></button>
+    <button class="tab-btn" data-view="notes"><span class="tab-ico">✎</span>Appunti</button>
+    <button class="tab-btn" data-view="db"><span class="tab-ico">☰</span>Database</button>
+  </nav>
+  <div class="header-actions">
+    <button class="btn small recap-btn" id="btnRecap" title="Apri i recap delle sessioni del master">Recap sessioni</button>
+    <select class="theme-select" id="themeSelect" title="Tema colore">
+      <optgroup label="Neon">
+        <option value="teal">Neon Teal</option>
+        <option value="gold">Synthwave Gold</option>
+        <option value="acid">Acid Matrix</option>
+        <option value="crimson">Bloodmoon Crimson</option>
+        <option value="frost">Arcane Frost</option>
+        <option value="toxic">Toxic Wasteland</option>
+      </optgroup>
+      <optgroup label="Nuovi">
+        <option value="moss">Muschio Antico</option>
+        <option value="sakura">Sakura Dorato (chiaro)</option>
+        <option value="sakuranight">Sakura Notte</option>
+      </optgroup>
+    </select>
+    <span class="save-indicator" id="saveIndicator">—</span>
+    <details class="menu" id="dataMenu">
+      <summary class="btn small">Dati</summary>
+      <div class="menu-pop">
+        <button class="menu-item" id="btnExport">Esporta backup</button>
+        <button class="menu-item" id="btnImport">Importa backup</button>
+        <button class="menu-item" id="btnRecapSettings">Imposta link recap</button>
+        <hr>
+        <button class="menu-item danger" id="btnReset">Nuovo personaggio</button>
+      </div>
+    </details>
+    <input type="file" id="fileImport" accept=".json" style="display:none;">
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ================= SHEET VIEW ================= -->
+  <div class="view active" id="view-sheet">
+
+    <div class="layout-bar">
+      <p class="layout-hint" id="layoutHint" hidden>Trascina le sezioni dalla maniglia ⠿ o usa le frecce. Si salva da solo su questo dispositivo.</p>
+      <div class="layout-split" id="layoutSplit" role="group" aria-label="Larghezza delle colonne" hidden>
+        <span>Colonne</span>
+        <button class="split-btn" data-split="narrow" title="Colonna sinistra stretta">Stretta | Larga</button>
+        <button class="split-btn" data-split="half" title="Due colonne uguali">Metà | Metà</button>
+        <button class="split-btn" data-split="wide" title="Colonna sinistra larga">Larga | Stretta</button>
+      </div>
+      <div class="layout-tools">
+        <button class="btn small" id="btnLayoutReset" hidden>Ripristina</button>
+        <button class="btn small" id="btnLayout" aria-pressed="false">Personalizza layout</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="grid g-6">
+        <div class="field" style="grid-column:span 2;"><label>Nome Personaggio</label><input type="text" id="f_name" placeholder="Nome"></div>
+        <div class="field"><label>Giocatore</label><input type="text" id="f_player" placeholder="Salvo"></div>
+        <div class="field"><label>Livello Totale</label><div class="mod-badge" id="d_totallevel" style="width:100%; padding:0.4375rem;">1</div></div>
+        <div class="field"><label>Punti Esperienza</label><input type="number" id="f_xp" min="0" value="0"></div>
+        <div class="field"><label>Competenza</label><div class="mod-badge" id="d_prof" style="width:100%; padding:0.4375rem;">+2</div></div>
+      </div>
+      <div class="section-toolbar" style="margin-top:0.75rem;">
+        <label style="margin:0;">Classi (Multiclasse)</label>
+        <button class="btn small" id="btnAddClass">+ Aggiungi classe</button>
+      </div>
+      <div id="classesList"></div>
+      <datalist id="classSuggestions"></datalist>
+      <div class="grid g-2" style="margin-top:0.625rem;">
+        <div class="field">
+          <label>Specie / Razza</label>
+          <select id="f_race"><option value="">— seleziona o scrivi sotto —</option></select>
+          <input type="text" id="f_race_custom" placeholder="Razza personalizzata" style="margin-top:0.25rem;">
+        </div>
+        <div class="field"><label>Background</label><input type="text" id="f_background"></div>
+      </div>
+      <div class="grid g-6" style="margin-top:0.625rem;">
+        <div class="field"><label>Allineamento</label><input type="text" id="f_alignment"></div>
+        <div class="field"><label>Taglia</label><input type="text" id="f_size" placeholder="Media"></div>
+        <div class="field"><label>Velocità (m)</label><input type="number" id="f_speed" value="9"></div>
+        <div class="field"><label>Livello Empatia</label><input type="number" id="f_empathy" min="0" max="300" step="1" value="0"></div>
+        <div class="field"><label>Ispirazione</label><div style="padding-top:0.375rem;"><input type="checkbox" id="f_inspiration" style="width:1.125rem;height:1.125rem;"></div></div>
+      </div>
+    </div>
+
+    <div class="two-col" id="sheetCols">
+      <div class="sheet-col" id="colLeft" data-col="left">
+        <div class="panel" data-sec="abilities">
+          <h3>Caratteristiche</h3>
+          <div class="grid g-3" id="abilitiesGrid"></div>
+        </div>
+        <div class="panel" data-sec="saves">
+          <h3>Tiri Salvezza</h3>
+          <div id="savesList"></div>
+        </div>
+        <div class="panel" data-sec="skills">
+          <h3>Abilità</h3>
+          <div id="skillsList"></div>
+          <div class="small-note">Prima casella = competenza · seconda = expertise (doppia competenza).</div>
+        </div>
+        <div class="panel" data-sec="personality">
+          <h3>Personalità</h3>
+          <div class="grid g-2">
+            <div class="field"><label>Tratti Personalità</label><textarea id="f_traits"></textarea></div>
+            <div class="field"><label>Ideali</label><textarea id="f_ideals"></textarea></div>
+            <div class="field"><label>Legami</label><textarea id="f_bonds"></textarea></div>
+            <div class="field"><label>Difetti</label><textarea id="f_flaws"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-col" id="colRight" data-col="right">
+        <div class="panel" data-sec="combat">
+          <h3>Combattimento</h3>
+          <div class="grid g-4">
+            <div class="stat-big"><label>Classe Armatura</label><input class="val" type="number" id="f_ac" style="text-align:center;width:100%;background:transparent;border:none;color:var(--accent);font-family:var(--mono);font-size:1.375rem;font-weight:700;"></div>
+            <div class="stat-big"><label>Iniziativa</label><input class="val" type="text" id="d_init" placeholder="+0" style="text-align:center;width:100%;background:transparent;border:none;color:var(--accent);font-family:var(--mono);font-size:1.375rem;font-weight:700;"></div>
+            <div class="stat-big"><label>Percezione Passiva</label><input class="val" type="text" id="d_pp" placeholder="10" style="text-align:center;width:100%;background:transparent;border:none;color:var(--accent);font-family:var(--mono);font-size:1.375rem;font-weight:700;"></div>
+            <div class="stat-big"><label>Dado Vita</label><input class="val" type="text" id="f_hitdice" placeholder="1d8" style="text-align:center;width:100%;background:transparent;border:none;color:var(--accent);font-family:var(--mono);font-size:1.125rem;font-weight:700;"></div>
+          </div>
+          <div class="grid g-3" style="margin-top:0.625rem;">
+            <div class="field"><label>PF Massimi</label><input type="number" id="f_hpmax" value="0"></div>
+            <div class="field"><label>PF Attuali</label><input type="number" id="f_hpcur" value="0"></div>
+            <div class="field"><label>PF Temporanei</label><input type="number" id="f_hptemp" value="0"></div>
+          </div>
+          <div class="hp-bar" id="hpBar" title="Punti ferita">
+            <div class="hp-fill" id="hpFill"></div><div class="hp-temp" id="hpTempFill"></div>
+            <span class="hp-text" id="hpText">0 / 0</span>
+          </div>
+          <div class="hp-quick">
+            <input type="number" id="hpDelta" data-nocalc min="0" placeholder="Valore" aria-label="Valore danno o cura">
+            <button class="btn small hp-dmg" id="btnDamage">− Danno</button>
+            <button class="btn small hp-heal" id="btnHeal">+ Cura</button>
+            <span class="hp-sep"></span>
+            <button class="btn small" id="btnShortRest" title="Ricarica i consumabili e le abilità segnate «riposo breve»">Riposo breve</button>
+            <button class="btn small" id="btnLongRest" title="PF al massimo, slot incantesimo e TS morte azzerati">Riposo lungo</button>
+          </div>
+          <div class="death-saves">
+            <div class="grp"><label>Successi</label><div class="dots death-success" id="ds_success"></div></div>
+            <div class="grp"><label>Fallimenti</label><div class="dots death-fail" id="ds_fail"></div></div>
+          </div>
+        </div>
+
+        <div class="panel" data-sec="attacks">
+          <div class="section-toolbar"><h3 style="margin:0;">Attacchi &amp; Armi</h3><button class="btn small" id="btnAddAttack">+ Aggiungi</button></div>
+          <div class="tbl-wrap"><table class="tbl" id="attacksTable">
+            <thead><tr><th style="width:26%;">Arma</th><th>Bonus Att.</th><th>Danno / Tipo</th><th>Note</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+
+        <div class="panel" data-sec="inventory">
+          <div class="section-toolbar"><h3 style="margin:0;">Inventario</h3><button class="btn small" id="btnAddItem">+ Aggiungi</button></div>
+          <div class="grid g-4" style="margin-bottom:0.625rem;">
+            <div class="field"><label>Mp (platino)</label><input type="number" id="cur_mp" value="0"></div>
+            <div class="field"><label>Mo (oro)</label><input type="number" id="cur_mo" value="0"></div>
+            <div class="field"><label>Ma (argento)</label><input type="number" id="cur_ma" value="0"></div>
+            <div class="field"><label>Mr (rame)</label><input type="number" id="cur_mr" value="0"></div>
+          </div>
+          <div class="tbl-wrap"><table class="tbl" id="inventoryTable">
+            <thead><tr><th style="width:1.375rem;"></th><th style="width:34%;">Oggetto</th><th>Qtà</th><th>Peso</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div class="small-note">Clicca ▸ per aprire/chiudere i dettagli di un oggetto, oppure passa il mouse sulla riga per vederli al volo.</div>
+          <datalist id="itemSuggestions"></datalist>
+        </div>
+
+        <div class="panel" data-sec="spells">
+          <h3>Incantesimi</h3>
+          <div class="grid g-4">
+            <div class="field"><label>Classe Incantatrice</label><input type="text" id="sp_class"></div>
+            <div class="field">
+              <label>Abilità Incantatrice</label>
+              <select id="sp_ability">
+                <option value="">—</option>
+                <option value="int">Intelligenza</option>
+                <option value="wis">Saggezza</option>
+                <option value="cha">Carisma</option>
+              </select>
+            </div>
+            <div class="stat-big"><label>CD Salvezza</label><div class="val" id="d_spelldc">—</div></div>
+            <div class="stat-big"><label>Bonus Attacco</label><div class="val" id="d_spellatk">—</div></div>
+          </div>
+          <div class="section-toolbar" style="margin-top:0.75rem;"><h3 style="margin:0;">Slot Incantesimo</h3></div>
+          <div class="slots-grid" id="slotsGrid"></div>
+          <div class="small-note">Clicca i pallini per segnare gli slot usati. Il numero sotto è il totale.</div>
+
+          <div class="section-toolbar" style="margin-top:0.875rem;">
+            <h3 style="margin:0;">Incantesimi Conosciuti / Preparati</h3>
+            <div style="display:flex; gap:0.375rem;">
+              <select id="spellSort" title="Ordina per">
+                <option value="name">Ordina: Nome</option>
+                <option value="level">Ordina: Livello</option>
+                <option value="school">Ordina: Scuola</option>
+              </select>
+              <input type="text" id="spellSearchBox" placeholder="Cerca nel database…" style="width:12.5rem;">
+              <button class="btn small" id="btnAddCustomSpell">+ Personalizzato</button>
+            </div>
+          </div>
+          <div id="spellSearchResults" style="margin-bottom:0.5rem;"></div>
+          <div class="tbl-wrap"><table class="tbl" id="spellsTable">
+            <thead><tr><th style="width:1.375rem;"></th><th>Nome</th><th>Liv.</th><th>Scuola</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+
+        <div class="panel" data-sec="features">
+          <div class="section-toolbar"><h3 style="margin:0;">Tratti &amp; Talenti</h3>
+            <div style="display:flex; gap:0.375rem;">
+              <button class="btn small" id="btnAddFeatureFromDb">+ Da Database</button>
+              <button class="btn small" id="btnAddFeature">+ Manuale</button>
+            </div>
+          </div>
+          <div id="featuresList"></div>
+        </div>
+
+        <div class="panel" data-sec="resources">
+          <div class="section-toolbar"><h3 style="margin:0;">Risorse di classe</h3><button class="btn small" id="btnAddResource">+ Aggiungi</button></div>
+          <div id="resourcesEditor"></div>
+          <div class="small-note">Ki, Furia, Incanalare Divinità, Ispirazione Bardica… Clicca i pallini per segnare gli usi spesi. I pulsanti riposo le riportano al massimo in base alla ricarica scelta.</div>
+        </div>
+
+        <div class="panel" data-sec="proficiencies">
+          <h3>Competenze &amp; Linguaggi</h3>
+          <textarea id="f_proficiencies" placeholder="Strumenti, armi, armature, linguaggi..." style="min-height:4.375rem;"></textarea>
+        </div>
+
+        <div class="panel" data-sec="notes">
+          <h3>Note &amp; Background</h3>
+          <textarea id="f_notes" placeholder="Storia, alleati, contatti nel Network, innesti installati, note di campagna..." style="min-height:8.75rem;"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONSUMABLES VIEW ================= -->
+  <div class="view" id="view-consumables">
+    <div class="panel">
+      <div class="section-toolbar wrap">
+        <h3 style="margin:0;">Oggetti Consumabili</h3>
+        <div class="toolbar-group">
+          <input type="text" id="consSearch" placeholder="Filtra…" style="width:10rem;">
+          <select id="consFilter" title="Categoria">
+            <option value="">Tutte le categorie</option>
+          </select>
+          <button class="btn small primary" id="btnAddCons">+ Aggiungi</button>
+        </div>
+      </div>
+      <div class="cons-quickadd">
+        <input type="text" id="consQuickName" list="consSuggestions" placeholder="Aggiunta rapida: scrivi un oggetto (es. Pozione di guarigione) e premi Invio">
+        <datalist id="consSuggestions"></datalist>
+      </div>
+      <div id="consList" class="cons-list"></div>
+      <div class="small-note">Usa <b>−</b> quando consumi un oggetto. Se imposti un <b>massimo</b> e una ricarica (riposo breve/lungo), i pulsanti riposo nella scheda lo riportano al massimo — utile anche per usi limitati di abilità.</div>
+    </div>
+  </div>
+
+  <!-- ================= NOTES VIEW ================= -->
+  <div class="view" id="view-notes">
+    <div class="notes-layout">
+      <aside class="panel notes-side">
+        <div class="section-toolbar">
+          <h3 style="margin:0;">Appunti</h3>
+          <button class="btn small primary" id="btnAddNote">+ Nuova</button>
+        </div>
+        <button class="btn small" id="btnAddSessionNote" style="width:100%; margin-bottom:0.5rem;">+ Nota di sessione (data di oggi)</button>
+        <input type="text" id="notesSearch" placeholder="Cerca negli appunti…">
+        <div id="notesList" class="notes-list"></div>
+      </aside>
+      <section class="panel notes-editor" id="notesEditor">
+        <div class="empty-hint" id="notesEmpty">Nessun appunto selezionato. Creane uno con <b>+ Nuova</b>.</div>
+        <div id="notesForm" style="display:none;">
+          <div class="note-head">
+            <input type="text" id="noteTitle" class="note-title" placeholder="Titolo">
+            <button class="icon-btn" id="btnPinNote" title="Fissa in alto">☆</button>
+            <button class="icon-btn" id="btnDeleteNote" title="Elimina appunto">🗑</button>
+          </div>
+          <div class="small-note" id="noteMeta"></div>
+          <textarea id="noteBody" class="note-body" placeholder="PNG incontrati, indizi, piani del gruppo, debiti col Fixer…"></textarea>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ================= DATABASE VIEW ================= -->
+  <div class="view" id="view-db">
+    <div class="db-layout">
+      <div>
+        <div class="panel">
+          <h3>Categorie</h3>
+          <div class="db-cats" id="dbCatList"></div>
+        </div>
+        <div class="panel">
+          <button class="btn primary" id="btnOpenAddRule" style="width:100%;">+ Aggiungi regola personalizzata</button>
+          <button class="btn small" id="btnExportRules" style="width:100%; margin-top:0.5rem;">Esporta regole custom</button>
+          <button class="btn small" id="btnImportRules" style="width:100%; margin-top:0.5rem;">Importa regole custom</button>
+          <input type="file" id="fileImportRules" accept=".json" style="display:none;">
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="search-bar">
+            <input type="text" id="dbSearch" placeholder="Cerca in tutto il database: incantesimi, armi, talenti…">
+            <span class="pill-total" id="dbResultCount">0 voci</span>
+          </div>
+          <div class="chips" id="dbSubchips"></div>
+          <div class="entry-list" id="dbResults"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="app-footer">Epsilon System · Scheda locale · i dati restano sul tuo computer (localStorage del browser)</footer>
+
+<!-- Entry detail modal -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal">
+    <button class="close-x" data-close="entryModal">✕</button>
+    <div id="entryModalBody"></div>
+  </div>
+</div>
+
+<!-- Add/Edit rule modal -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="modal">
+    <button class="close-x" data-close="ruleModal">✕</button>
+    <h3 id="ruleModalTitle">Aggiungi regola</h3>
+    <div class="field">
+      <label>Categoria</label>
+      <select id="rm_category"></select>
+    </div>
+    <div class="grid g-2">
+      <div class="field"><label>Nome</label><input type="text" id="rm_name"></div>
+      <div class="field"><label>Sottocategoria (opzionale)</label><input type="text" id="rm_subcategory"></div>
+    </div>
+    <div class="field">
+      <label>Campi (chiave / valore) — es. Danni, Peso, Costo, Livello…</label>
+      <div id="rm_fields"></div>
+      <button class="btn small" id="rm_addField">+ Campo</button>
+    </div>
+    <div class="field">
+      <label>Descrizione (markdown semplice: **grassetto**, tabelle con |, liste con -)</label>
+      <textarea id="rm_body" style="min-height:7.5rem;"></textarea>
+    </div>
+    <div class="field">
+      <label>Tag (separati da virgola)</label>
+      <input type="text" id="rm_tags">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem;">
+      <button class="btn danger" id="rm_delete" style="display:none;">Elimina</button>
+      <button class="btn primary" id="rm_save">Salva regola</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit custom spell modal -->
+<div class="modal-overlay" id="spellModal">
+  <div class="modal">
+    <button class="close-x" data-close="spellModal">✕</button>
+    <h3 id="spellModalTitle">Incantesimo personalizzato</h3>
+    <div class="grid g-2">
+      <div class="field"><label>Nome</label><input type="text" id="sm_name"></div>
+      <div class="field"><label>Livello</label>
+        <select id="sm_level">
+          <option value="0">Trucchetto</option>
+          <option value="1">1° Livello</option>
+          <option value="2">2° Livello</option>
+          <option value="3">3° Livello</option>
+          <option value="4">4° Livello</option>
+          <option value="5">5° Livello</option>
+          <option value="6">6° Livello</option>
+          <option value="7">7° Livello</option>
+          <option value="8">8° Livello</option>
+          <option value="9">9° Livello</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid g-2">
+      <div class="field"><label>Scuola</label><select id="sm_school"></select></div>
+      <div class="field"><label>Classi</label><input type="text" id="sm_classes" placeholder="Mago, Stregone…"></div>
+    </div>
+    <div class="grid g-2">
+      <div class="field"><label>Tempo di Lancio</label><input type="text" id="sm_castingtime" placeholder="1 azione"></div>
+      <div class="field"><label>Gittata</label><input type="text" id="sm_range" placeholder="18 m"></div>
+    </div>
+    <div class="grid g-2">
+      <div class="field">
+        <label>Componenti</label>
+        <div class="inline-check-row">
+          <label class="inline-check"><input type="checkbox" id="sm_comp_v"> V</label>
+          <label class="inline-check"><input type="checkbox" id="sm_comp_s"> S</label>
+          <label class="inline-check"><input type="checkbox" id="sm_comp_m"> M</label>
+        </div>
+        <input type="text" id="sm_comp_material" placeholder="Materiali (se M)" style="margin-top:0.375rem;">
+      </div>
+      <div class="field">
+        <label>Durata</label>
+        <input type="text" id="sm_duration" placeholder="Istantaneo">
+        <label class="inline-check" style="margin-top:0.375rem;"><input type="checkbox" id="sm_concentration"> Richiede concentrazione</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="inline-check"><input type="checkbox" id="sm_ritual"> Rituale</label>
+    </div>
+    <div class="field">
+      <label>Descrizione / Effetto</label>
+      <textarea id="sm_desc" style="min-height:6.875rem;"></textarea>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem;">
+      <button class="btn danger" id="sm_delete" style="display:none;">Elimina</button>
+      <button class="btn primary" id="sm_save">Salva incantesimo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feature-from-DB picker modal -->
+<div class="modal-overlay" id="pickModal">
+  <div class="modal">
+    <button class="close-x" data-close="pickModal">✕</button>
+    <h3>Aggiungi tratto dal Database</h3>
+    <input type="text" id="pickSearch" placeholder="Cerca razze, classi, talenti, mastery, proprietà, cicatrici…">
+    <div class="entry-list" id="pickResults" style="margin-top:0.625rem;"></div>
+  </div>
+</div>
+
+<!-- Recap link settings modal -->
+<div class="modal-overlay" id="recapModal">
+  <div class="modal">
+    <button class="close-x" data-close="recapModal">✕</button>
+    <h3>Link ai recap delle sessioni</h3>
+    <p class="small-note" style="font-size:0.8125rem;">Incolla il link alla cartella/pagina dei recap che aggiorna il master: cartella di Google Drive con il vault Obsidian, pagina di Obsidian Publish, Notion… Il pulsante <b>Recap sessioni</b> la aprirà in una nuova scheda.</p>
+    <div class="field"><label>URL dei recap</label><input type="text" id="recapUrlInput" placeholder="https://drive.google.com/drive/folders/…"></div>
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem;">
+      <button class="btn" id="recapClear">Rimuovi link</button>
+      <button class="btn primary" id="recapSave">Salva e apri</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="calc.js"></script>
+<script src="extra.js"></script>
+</body>
+</html>
