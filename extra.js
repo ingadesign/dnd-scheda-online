@@ -113,7 +113,7 @@
   const LAYOUT_KEY = 'epsilon_sheet_layout_v1';
   const TITLES = {abilities:'Caratteristiche', saves:'Tiri salvezza', skills:'Abilità', personality:'Personalità',
     combat:'Combattimento', attacks:'Attacchi & armi', inventory:'Inventario', spells:'Incantesimi', features:'Tratti & talenti',
-    resources:'Risorse di classe', proficiencies:'Competenze & linguaggi', notes:'Note & background'};
+    resources:'Risorse di classe', companions:'Compagni', proficiencies:'Competenze & linguaggi', notes:'Note & background'};
   const cols = {left:$('colLeft'), right:$('colRight')};
   const panelOf = key => document.querySelector(`#sheetCols .panel[data-sec="${key}"]`);
   // disposizione di partenza = quella scritta nell'HTML

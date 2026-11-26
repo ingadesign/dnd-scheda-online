@@ -64,7 +64,7 @@ function defaultChar(){
     saveProf:{str:false,dex:false,con:false,int:false,wis:false,cha:false},
     skills: Object.fromEntries(SKILLS.map(([k])=>[k,{prof:false,exp:false}])),
     combat:{ac:10,hpMax:0,hpCur:0,hpTemp:0,hitDice:'',deathSuccess:0,deathFail:0,initiative:'',passivePerception:''},
-    currency:{mp:0,mo:0,ma:0,mr:0},
+    currency:{mp:0,mo:0,me:0,ma:0,mr:0},
     attacks:[],
     inventory:[],
     spellcasting:{class:'',ability:'',slots:Object.fromEntries([1,2,3,4,5,6,7,8,9].map(n=>[n,{total:0,used:0}])),spells:[]},
@@ -93,7 +93,13 @@ function migrateChar(c){
     c.meta.empathy = Math.min(300, Math.max(0, Number(c.meta.empathy)||0));
   }
   (c.features||[]).forEach(f=>{ if(f.expanded===undefined) f.expanded=false; if(f.source===undefined) f.source=''; });
-  (c.inventory||[]).forEach(it=>{ if(it.expanded===undefined) it.expanded=false; });
+  (c.inventory||[]).forEach(it=>{ if(it.expanded===undefined) it.expanded=false; if(it.where===undefined) it.where=''; if(it.attune===undefined) it.attune=''; });
+  if(!c.currency) c.currency={mp:0,mo:0,me:0,ma:0,mr:0};
+  // salvataggi incompleti: abilità e tiri salvezza mancanti
+  c.skills = Object.assign(Object.fromEntries(SKILLS.map(([k])=>[k,{prof:false,exp:false}])), c.skills||{});
+  c.saveProf = Object.assign({str:false,dex:false,con:false,int:false,wis:false,cha:false}, c.saveProf||{});
+  c.personality = Object.assign({traits:'',ideals:'',bonds:'',flaws:''}, c.personality||{});
+  if(c.currency.me===undefined) c.currency.me=0;
   if(!Array.isArray(c.consumables)) c.consumables=[];
   if(!Array.isArray(c.notesList)) c.notesList=[];
   c.consumables.forEach(it=>{ if(!it.id) it.id=uid(); if(it.qty===undefined) it.qty=1; if(it.max===undefined) it.max=''; if(it.recharge===undefined) it.recharge=''; });
@@ -299,6 +305,7 @@ function initSheetStaticBindings(){
 
   bindInput('cur_mp', ()=>CHAR.currency.mp, v=>CHAR.currency.mp=v);
   bindInput('cur_mo', ()=>CHAR.currency.mo, v=>CHAR.currency.mo=v);
+  bindInput('cur_me', ()=>CHAR.currency.me, v=>CHAR.currency.me=v);
   bindInput('cur_ma', ()=>CHAR.currency.ma, v=>CHAR.currency.ma=v);
   bindInput('cur_mr', ()=>CHAR.currency.mr, v=>CHAR.currency.mr=v);
 
@@ -422,6 +429,9 @@ function renderComputed(){
   const pb = profBonus(level);
   document.getElementById('d_totallevel').textContent = level;
   document.getElementById('d_prof').textContent = fmtMod(pb);
+  const cu = CHAR.currency, coinTot = (Number(cu.mp)||0)*10 + (Number(cu.mo)||0) + (Number(cu.me)||0)*0.5 + (Number(cu.ma)||0)*0.1 + (Number(cu.mr)||0)*0.01;
+  const ct = document.getElementById('d_cointotal'); if(ct) ct.textContent = (Math.round(coinTot*100)/100).toLocaleString('it-IT')+' mo';
+  renderInventorySummary();
 
   Object.keys(ABILITY_LABELS).forEach(ab=>{
     const m = mod(CHAR.abilities[ab]);
@@ -486,23 +496,74 @@ document.getElementById('btnAddAttack').addEventListener('click', ()=>{
   CHAR.attacks.push({name:'',bonus:'',damage:'',notes:''}); renderAttacks(); markSaving();
 });
 
-/* ---- Inventory ---- */
+/* ---- Inventory ----
+   Ogni oggetto: {name, qty, weight, notes, expanded, where, attune}
+   where  = dove si trova: '' (addosso), Zaino, Borsa, Cavalcatura, Deposito… (testo libero)
+   attune = '' | 'req' (richiede sintonia) | 'on' (in sintonia, max 3)
+   Gli oggetti in Cavalcatura e Deposito non contano nel carico. */
+const INV_PLACES = ['Addosso','Zaino','Borsa','Cavalcatura','Deposito'];
+const INV_NOT_CARRIED = /^(cavalcatura|deposito|base|carro|nave)/i;
+function parseWeightKg(w){
+  const t = String(w||'').replace(',', '.');
+  const m = t.match(/(\d+(\.\d+)?)/); if(!m) return 0;
+  const n = Number(m[1]);
+  return /lb|libbr/i.test(t) ? n*0.4536 : /\bg\b|gramm/i.test(t) && !/kg/i.test(t) ? n/1000 : n;
+}
+function fmtKg(n){ return (Math.round(n*10)/10).toLocaleString('it-IT')+' kg'; }
+function carryCapacityKg(){
+  const size = String(CHAR.meta.size||'').toLowerCase();
+  const k = /enorme|mastodont/.test(size) ? 4 : /grande/.test(size) ? 2 : /minusc/.test(size) ? 0.5 : 1;
+  return (Number(CHAR.abilities.str)||10) * 7.5 * k;   // 2024: Forza × 15 lb ≈ Forza × 7,5 kg
+}
+function renderInventorySummary(){
+  const box = document.getElementById('invSummary'); if(!box) return;
+  const by = {};
+  let carried = 0;
+  CHAR.inventory.forEach(it=>{
+    const w = parseWeightKg(it.weight) * (Number(it.qty)||0);
+    const place = it.where || 'Addosso';
+    by[place] = (by[place]||0) + w;
+    if(!INV_NOT_CARRIED.test(place)) carried += w;
+  });
+  const cap = carryCapacityKg();
+  const over = carried > cap;
+  const att = CHAR.inventory.filter(it=>it.attune==='on').length;
+  const pct = cap ? Math.min(100, carried/cap*100) : 0;
+  box.innerHTML = `
+    <div class="inv-load${over?' over':''}">
+      <span>Carico <b>${fmtKg(carried)}</b> / ${fmtKg(cap)}</span>
+      <div class="inv-load-bar"><span style="width:${pct}%"></span></div>
+      <span class="inv-load-state">${over?'Sovraccarico: velocità 1,5 m':'Normale'}</span>
+    </div>
+    <div class="inv-places">${Object.entries(by).map(([k,v])=>`<span class="tag-pill">${escapeHtml(k)} · ${fmtKg(v)}</span>`).join('')}
+      <span class="tag-pill attune-pill${att>3?' over':''}" title="Oggetti magici in sintonia (massimo 3)">✦ Sintonia ${att}/3</span></div>`;
+}
 function renderInventory(){
   const tbody = document.querySelector('#inventoryTable tbody');
   tbody.innerHTML='';
   CHAR.inventory.forEach((item,i)=>{
     const tr=document.createElement('tr');
     if(item.notes) tr.title = item.notes;
+    if(item.attune==='on') tr.classList.add('attuned');
     tr.innerHTML = `
       <td><button class="icon-btn expand-toggle" title="Mostra/nascondi dettagli">${item.expanded?'▾':'▸'}</button></td>
-      <td><input type="text" list="itemSuggestions" data-f="name" value="${escapeHtml(item.name)}"></td>
+      <td><input type="text" list="itemSuggestions" data-f="name" value="${escapeHtml(item.name)}">${item.attune==='on'?'<span class="attune-mark" title="In sintonia">✦</span>':''}</td>
       <td><input type="number" data-f="qty" value="${item.qty??1}" style="width:3.4375rem;"></td>
       <td><input type="text" data-f="weight" value="${escapeHtml(item.weight)}" style="width:4.375rem;"></td>
+      <td><input type="text" list="placeSuggestions" data-f="where" value="${escapeHtml(item.where||'')}" placeholder="Addosso" style="width:6.5rem;" aria-label="Dove si trova"></td>
       <td><button class="icon-btn remove-btn" title="Rimuovi">✕</button></td>`;
     tr.querySelectorAll('input').forEach(inp=>{
       inp.addEventListener('input', ()=>{
         item[inp.dataset.f]= inp.type==='number'?Number(inp.value):inp.value; markSaving();
+        if(inp.dataset.f!=='name') renderInventorySummary();
       });
+    });
+    // peso dal database se il campo è vuoto
+    tr.querySelector('[data-f="name"]').addEventListener('change', e=>{
+      if(item.weight) return;
+      const n = e.target.value.trim().toLowerCase();
+      const hit = ['weapons','armor','ammunition','potions'].flatMap(c=>allEntries(c)).find(x=>x.name.toLowerCase()===n);
+      if(hit && hit.fields && hit.fields['Peso']){ item.weight = hit.fields['Peso']; tr.querySelector('[data-f="weight"]').value = item.weight; renderInventorySummary(); markSaving(); }
     });
     tr.querySelector('.expand-toggle').addEventListener('click', ()=>{
       item.expanded = !item.expanded; renderInventory(); markSaving();
@@ -512,16 +573,35 @@ function renderInventory(){
     if(item.expanded){
       const trD = document.createElement('tr');
       trD.className = 'detail-row';
-      trD.innerHTML = `<td colspan="5"><textarea placeholder="Descrizione, proprietà, note su questo oggetto...">${escapeHtml(item.notes)}</textarea></td>`;
+      trD.innerHTML = `<td colspan="6">
+        <div class="attune-row"><label for="att_${i}">Oggetto magico</label>
+          <select id="att_${i}">
+            <option value=""${!item.attune?' selected':''}>Nessuna sintonia</option>
+            <option value="req"${item.attune==='req'?' selected':''}>Richiede sintonia</option>
+            <option value="on"${item.attune==='on'?' selected':''}>In sintonia ✦</option>
+          </select></div>
+        <textarea placeholder="Descrizione, proprietà, note su questo oggetto...">${escapeHtml(item.notes)}</textarea></td>`;
       trD.querySelector('textarea').addEventListener('input', e=>{
         item.notes = e.target.value; tr.title = item.notes; markSaving();
+      });
+      trD.querySelector('select').addEventListener('change', e=>{
+        if(e.target.value==='on' && CHAR.inventory.filter(x=>x!==item && x.attune==='on').length>=3){
+          toast('Sei già in sintonia con 3 oggetti: togline uno prima');
+          e.target.value = item.attune||''; return;
+        }
+        item.attune = e.target.value; renderInventory(); markSaving();
       });
       tbody.appendChild(trD);
     }
   });
+  let dl = document.getElementById('placeSuggestions');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='placeSuggestions'; document.body.appendChild(dl); }
+  const places = new Set([...INV_PLACES, ...CHAR.inventory.map(x=>x.where).filter(Boolean)]);
+  dl.innerHTML = [...places].map(p=>`<option value="${escapeHtml(p)}">`).join('');
+  renderInventorySummary();
 }
 document.getElementById('btnAddItem').addEventListener('click', ()=>{
-  CHAR.inventory.push({name:'',qty:1,weight:'',notes:'',expanded:true}); renderInventory(); markSaving();
+  CHAR.inventory.push({name:'',qty:1,weight:'',notes:'',expanded:true,where:'',attune:''}); renderInventory(); markSaving();
 });
 function populateItemSuggestions(){
   const dl = document.getElementById('itemSuggestions');
