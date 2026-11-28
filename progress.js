@@ -40,9 +40,11 @@
     const m = e && String(e.fields['Hit Die']).match(/d(\d+)/);
     return m ? Number(m[1]) : (HIT_DIE[b] || 8);
   }
-  function featuresAt(name, level){
+  function featuresAt(name, level, subclass){
     const b = base(name); if(!b) return [];
-    return allEntries('classes').filter(x => x.fields && String(x.fields.Class || x.subcategory) === b && x.name !== b && num(x.fields.Level) === level);
+    const t = norm(subclass);
+    const okSub = x => !x.fields.Subclass || (t && (norm(x.fields.Subclass) === t || norm(x.fields.Subclass).includes(t) || t.includes(norm(x.fields.Subclass))));
+    return allEntries('classes').filter(x => x.fields && String(x.fields.Class || x.subcategory) === b && x.name !== b && num(x.fields.Level) === level && !x.fields.Variant && okSub(x));
   }
   window.ClassInfo = {base, hitDie, featuresAt};
 
@@ -110,7 +112,7 @@
       const L = i + 1;
       // con una sola classe il livello del personaggio coincide con quello di classe
       classLvl = classes.length > 1 ? (L <= num(first.level) ? L : null) : L;
-      const feats = cls && classLvl ? featuresAt(cls, classLvl) : [];
+      const feats = cls && classLvl ? featuresAt(cls, classLvl, first.subclass) : [];
       const state = L <= lvl ? 'done' : L === lvl + 1 ? 'next' : '';
       return `<div class="plan-row ${state}">
         <div class="plan-lvl">${L}${state === 'next' ? '<small>prossimo</small>' : ''}</div>

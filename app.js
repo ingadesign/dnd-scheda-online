@@ -329,13 +329,19 @@ function renderClasses(){
     row.className='class-row';
     row.innerHTML = `
       <input type="text" list="classSuggestions" placeholder="Classe" data-f="name" value="${escapeHtml(cl.name)}">
-      <input type="text" placeholder="Sottoclasse" data-f="subclass" value="${escapeHtml(cl.subclass)}">
+      <input type="text" list="subcl_${i}" placeholder="Sottoclasse" data-f="subclass" value="${escapeHtml(cl.subclass)}">
+      <datalist id="subcl_${i}">${(window.subclassesFor ? window.subclassesFor(cl.name) : []).map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
       <input type="number" min="1" max="20" placeholder="Liv." data-f="level" value="${cl.level}">
       <button class="icon-btn" title="Rimuovi classe">✕</button>`;
     row.querySelectorAll('input').forEach(inp=>{
       inp.addEventListener('input', ()=>{
         cl[inp.dataset.f] = inp.type==='number' ? (inp.value===''?1:Number(inp.value)) : inp.value;
         markSaving(); renderComputed();
+      });
+      // cambiata la classe: aggiorna l'elenco delle sottoclassi di quella riga
+      if(inp.dataset.f==='name') inp.addEventListener('change', ()=>{
+        const dl = row.querySelector('datalist');
+        if(dl) dl.innerHTML = (window.subclassesFor ? window.subclassesFor(cl.name) : []).map(n=>`<option value="${escapeHtml(n)}">`).join('');
       });
     });
     row.querySelector('.icon-btn').addEventListener('click', ()=>{

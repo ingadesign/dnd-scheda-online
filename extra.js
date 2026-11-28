@@ -267,7 +267,15 @@
     const list = classEntries().filter(isClass);
     return list.find(e=>norm(e.name)===n) || (ALIAS[n] && list.find(e=>e.name===ALIAS[n])) || null;
   };
-  const featuresOf = base => classEntries().filter(e=> e.subcategory===base && e.name!==base && e.fields && e.fields.Level);
+  // privilegi della classe base (esclusi quelli di sottoclasse e le varianti homebrew)
+  const featuresOf = base => classEntries().filter(e=> e.subcategory===base && e.name!==base && e.fields && e.fields.Level && !e.fields.Subclass && !e.fields.Variant);
+  // privilegi della sottoclasse scelta nella riga (campo "Sottoclasse"), riconosciuta anche scritta in parte
+  function subclassName(base, typed){
+    const t = norm(typed); if(!t) return null;
+    const subs = [...new Set(classEntries().filter(e=> e.subcategory===base && e.fields && e.fields.Subclass).map(e=> e.fields.Subclass))];
+    return subs.find(s=> norm(s)===t) || subs.find(s=> norm(s).includes(t) || t.includes(norm(s))) || null;
+  }
+  const subFeaturesOf = (base, sub) => sub ? classEntries().filter(e=> e.subcategory===base && e.fields && e.fields.Level && e.fields.Subclass===sub && !e.fields.Variant) : [];
   // classe 5e da cui prendere i privilegi: la classe stessa, o "Basato su" per le Epsilon
   function baseOf(row){
     const e = findClass(row.name);
@@ -328,9 +336,11 @@
         feats.push({key:`${label}|${entry.name}`, name:entry.name, desc, level:0, order:ri});
       }
       if(!base) return;
-      featuresOf(base).forEach(e=>{
+      const sub = subclassName(base, row.subclass);
+      featuresOf(base).concat(subFeaturesOf(base, sub)).forEach(e=>{
         const flv = num(e.fields.Level); if(flv > lv) return;
-        feats.push({key:`${label}|${e.name}`, name:e.name, desc:`*${base} · livello ${flv}*\n\n${e.body||''}`, level:flv, order:ri});
+        const who = e.fields.Subclass ? `${base} · ${e.fields.Subclass}` : base;
+        feats.push({key:`${label}|${e.name}`, name:e.name, desc:`*${who} · livello ${flv}*\n\n${e.body||''}`, level:flv, order:ri});
         const rule = RESOURCE_RULES[plainName(e.name)];
         if(rule){
           const r = rule(lv, base);
@@ -407,6 +417,11 @@
     }
   }
   window.syncClassFeatures = sync;
+  // sottoclassi disponibili per una classe (per il menu a tendina della riga)
+  window.subclassesFor = function(name){
+    const {base} = baseOf({name}); if(!base) return [];
+    return classEntries().filter(e=> e.subcategory===base && e.fields && e.fields.Subclass && e.fields.Summary).map(e=> e.fields.Subclass).sort((a,b)=>a.localeCompare(b,'it'));
+  };
 
   /* ---- solo classi vere nel menu a tendina ---- */
   function fillClassList(){
@@ -439,6 +454,7 @@
   const origRenderAll = renderAll;
   renderAll = function(){ origRenderAll(); fillClassList(); sync({silent:true}); };
   fillClassList();
+  if(typeof renderClasses === 'function') renderClasses();   // per riempire i menu delle sottoclassi
   sync({silent:true});
 })();
 
