@@ -5,6 +5,8 @@ const CATS = [
   {key:'armor_properties', label:'Proprietà Armature'},
   {key:'mastery_properties', label:'Mastery'},
   {key:'ammunition', label:'Munizioni'},
+  {key:'tools', label:'Strumenti'},
+  {key:'gear', label:'Equipaggiamento'},
   {key:'conditions', label:'Condizioni'},
   {key:'critical_scars', label:'Cicatrici Critiche'},
   {key:'feats', label:'Talenti'},
@@ -568,7 +570,7 @@ function renderInventory(){
     tr.querySelector('[data-f="name"]').addEventListener('change', e=>{
       if(item.weight) return;
       const n = e.target.value.trim().toLowerCase();
-      const hit = ['weapons','armor','ammunition','potions'].flatMap(c=>allEntries(c)).find(x=>x.name.toLowerCase()===n);
+      const hit = ['weapons','armor','ammunition','tools','gear','potions'].flatMap(c=>allEntries(c)).find(x=>x.name.toLowerCase()===n);
       if(hit && hit.fields && hit.fields['Peso']){ item.weight = hit.fields['Peso']; tr.querySelector('[data-f="weight"]').value = item.weight; renderInventorySummary(); markSaving(); }
     });
     tr.querySelector('.expand-toggle').addEventListener('click', ()=>{
@@ -613,7 +615,7 @@ function populateItemSuggestions(){
   const dl = document.getElementById('itemSuggestions');
   dl.innerHTML='';
   let items=[];
-  ['weapons','armor','ammunition','potions'].forEach(cat=>{ items = items.concat(allEntries(cat)); });
+  ['weapons','armor','ammunition','tools','gear','potions'].forEach(cat=>{ items = items.concat(allEntries(cat)); });
   items.sort(byNameIt).forEach(e=>{ const o=document.createElement('option'); o.value=e.name; dl.appendChild(o); });
 }
 
